@@ -152,6 +152,32 @@ def test_knight_can_reach_out_of_bounds():
     assert knight.can_reach(-1, 3, B) == False  # Out of bounds
     assert knight.can_reach(6, 2, B) == False  # Out of bounds
 
+def test_knight_cannot_capture_opposing_king():
+    white_king = King(1, 1, True)
+    knight = Knight(1, 2, True)
+    black_king = King(2, 4, False)
+    B = (5, [white_king, knight, black_king])
+
+    assert knight.can_reach(2, 4, B)  # Attack geometry still sees the king.
+    assert not knight.can_move_to(2, 4, B)  # Legal moves may not capture it.
+
+def test_king_cannot_capture_opposing_king():
+    white_king = King(1, 1, True)
+    black_king = King(2, 1, False)
+    B = (5, [white_king, black_king])
+
+    assert not white_king.can_move_to(2, 1, B)
+
+def test_piece_cannot_move_while_leaving_own_king_in_check():
+    white_king = King(1, 1, True)
+    knight = Knight(5, 5, True)
+    black_king = King(5, 4, False)
+    checking_knight = Knight(3, 2, False)
+    B = (5, [white_king, knight, black_king, checking_knight])
+
+    assert knight.can_reach(4, 3, B)
+    assert not knight.can_move_to(4, 3, B)
+
 # Test King.can_reach function
 def test_king_can_reach_valid_moves():
     king = King(3, 3, True)
@@ -363,13 +389,13 @@ def test_is_checkmate_false_can_escape():
     
     assert is_checkmate(True, B) == False  # King can escape
 
-def test_is_checkmate_false_can_block():
+def test_is_checkmate_false_king_can_escape():
     wk = King(3, 3, True)
     wn = Knight(1, 1, True)  # White knight can potentially help
     bn = Knight(1, 2, False)  # Black knight attacking
     B = (5, [wk, wn, bn])
 
-    # King has multiple escape squares available
+    # The knight check cannot be blocked, but the king has escape squares.
     assert is_checkmate(True, B) == False
 
 def test_is_checkmate_complex_scenario():
@@ -382,9 +408,8 @@ def test_is_checkmate_complex_scenario():
 
     # White king at (1,1): adjacent squares are (1,2), (2,1), (2,2)
     # bk at (3,3) controls (2,2); bn1 at (2,3) controls (1,1) and (4,2); bn2 at (3,2) controls (1,1),(2,4),(4,4),(1,3)
-    # King is in check from bk reaching (2,2) — actually test the reachable result directly
-    result = is_checkmate(True, B)
-    assert isinstance(result, bool)
+    # This arrangement is not mate: the white king can escape to b1.
+    assert is_checkmate(True, B) is False
 
 # Test is_stalemate function
 def test_is_stalemate_true():
@@ -484,12 +509,33 @@ def test_read_board_wrong_king_count(tmp_path):
     board_file.write_text("5\nNa1, Na2\nKb3\n")
     with pytest.raises(IOError):
         read_board(str(board_file))
-    
+
     # Two white kings
     board_file = tmp_path / "two_white_kings.txt"
     board_file.write_text("5\nKa1, Kb2\nKc3\n")
     with pytest.raises(IOError):
         read_board(str(board_file))
+
+def test_save_board_round_trip(tmp_path):
+    board_file = tmp_path / "saved_board.txt"
+    board = (5, [King(1, 1, True), Knight(2, 3, True), King(5, 5, False), Knight(4, 2, False)])
+
+    save_board(str(board_file), board)
+    restored = read_board(str(board_file))
+
+    def pieces_by_value(state):
+        size, pieces = state
+        return size, sorted((type(piece).__name__, piece.pos_x, piece.pos_y, piece.side) for piece in pieces)
+
+    assert pieces_by_value(restored) == pieces_by_value(board)
+
+def test_find_black_move_returns_legal_black_move():
+    board = (5, [King(1, 1, True), King(5, 5, False), Knight(3, 3, False)])
+
+    piece, to_x, to_y = find_black_move(board)
+
+    assert piece.side is False
+    assert piece.can_move_to(to_x, to_y, board)
 
 # Test conf2unicode function
 def test_conf2unicode_basic():
