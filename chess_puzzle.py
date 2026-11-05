@@ -103,6 +103,12 @@ class Knight(Piece):
         checks if this knight can move to coordinates pos_X, pos_Y
         on board B according to all chess rules
         '''
+        # A king is never captured; checkmate ends the game instead.
+        if is_piece_at(pos_X, pos_Y, B):
+            target_piece = piece_at(pos_X, pos_Y, B)
+            if isinstance(target_piece, King) and target_piece.side != self.side:
+                return False
+
         # First check basic movement rules
         if not self.can_reach(pos_X, pos_Y, B):
             return False
@@ -168,6 +174,12 @@ class King(Piece):
     
     def can_move_to(self, pos_X : int, pos_Y : int, B: Board) -> bool:
         '''checks if this king can move to coordinates pos_X, pos_Y on board B according to all chess rules'''
+        # A king is never captured; checkmate ends the game instead.
+        if is_piece_at(pos_X, pos_Y, B):
+            target_piece = piece_at(pos_X, pos_Y, B)
+            if isinstance(target_piece, King) and target_piece.side != self.side:
+                return False
+
         # First check basic movement rules
         if not self.can_reach(pos_X, pos_Y, B):
             return False
